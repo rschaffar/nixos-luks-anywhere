@@ -1,117 +1,117 @@
 # NixOS on Hetzner Cloud with LUKS Encryption
 
-Deploy encrypted NixOS to Hetzner Cloud using [nixos-anywhere](https://github.com/nix-community/nixos-anywhere) and [disko](https://github.com/nix-community/disko).
+Deploy encrypted NixOS to Hetzner Cloud with remote LUKS unlock via SSH.
 
 ## Features
 
-- Full disk encryption with LUKS
-- Remote LUKS unlock via SSH (initrd)
-- BIOS + EFI hybrid boot support
+- Full disk encryption (LUKS)
+- Remote unlock via SSH (port 2222 in initrd)
+- IPv6 auto-configured from Hetzner metadata
 - Works on x86_64 and aarch64
 
-## Prerequisites
+## Quick Start
 
-1. A Hetzner Cloud server (any Linux, will be wiped)
-2. SSH access as root
-3. Nix installed on your local machine
+```bash
+./scripts/set-ssh-key.sh "ssh-ed25519 AAAA... user@host"
+./scripts/deploy.sh --target root@YOUR_SERVER_IP
+```
+
+For ARM servers add `--arm`.
+
+## Files
+
+| File                                 | Purpose                            |
+|--------------------------------------|------------------------------------|
+| `flake.nix`                          | Flake entry (hetzner, hetzner-arm) |
+| `disk-config.nix`                    | Disko LUKS layout                  |
+| `bootstrap.nix`                      | nixos-anywhere entry               |
+| `scripts/set-ssh-key.sh`             | Configure your SSH key             |
+| `scripts/deploy.sh`                  | Deployment wrapper                 |
+| **`hetzner/`**                       | **Files to copy to your flake**    |
+| `hetzner/configuration.nix`          | Main NixOS config                  |
+| `hetzner/hardware-configuration.nix` | Hetzner VM hardware                |
+| `hetzner/hetzner-metadata-ipv6.sh`   | IPv6 config script                 |
 
 ## Setup
 
 ### 1. Add your SSH key
 
-Edit `configuration.nix` and replace the placeholder SSH keys in TWO places:
-- `boot.initrd.network.ssh.authorizedKeys`
-- `users.users.root.openssh.authorizedKeys.keys`
-
-```nix
-"ssh-ed25519 AAAAC3... your-actual-key"
+```bash
+./scripts/set-ssh-key.sh "ssh-ed25519 AAAA... user@host"
 ```
 
-### 2. Create LUKS password file
+### 2. Deploy
 
 ```bash
-echo "your-secure-passphrase" > /tmp/disk-password
-chmod 600 /tmp/disk-password
+./scripts/deploy.sh --target root@YOUR_SERVER_IP
 ```
 
-### 3. Deploy
+The script:
+- Generates initrd SSH host key (if missing)
+- Prompts for LUKS passphrase
+- Deploys via nixos-anywhere
 
-```bash
-nix run github:nix-community/nixos-anywhere -- \
-  --flake .#hetzner \
-  --target-host root@YOUR_SERVER_IP \
-  --disk-encryption-keys /tmp/disk-password /tmp/disk-password
-```
+### 3. Unlock on boot
 
-For ARM servers:
-```bash
-nix run github:nix-community/nixos-anywhere -- \
-  --flake .#hetzner-arm \
-  --target-host root@YOUR_SERVER_IP \
-  --disk-encryption-keys /tmp/disk-password /tmp/disk-password
-```
-
-### 4. Clean up password file
-
-```bash
-rm /tmp/disk-password
-```
-
-## After Deployment
-
-### Unlock LUKS on boot
-
-After the server reboots, it waits for LUKS unlock. Connect via SSH on port 2222:
+After reboot, SSH to port 2222 to unlock:
 
 ```bash
 ssh -p 2222 root@YOUR_SERVER_IP
+# Enter LUKS passphrase when prompted
 ```
 
-You'll be prompted to enter the LUKS passphrase. After unlocking, the system boots normally.
+Then connect normally on port 22.
 
-### Normal SSH access
-
-Once unlocked, connect normally:
+## Updating
 
 ```bash
-ssh root@YOUR_SERVER_IP
-```
-
-## Updating the system
-
-After initial deployment, use `nixos-rebuild`:
-
-```bash
-# From local machine
 nixos-rebuild switch --flake .#hetzner --target-host root@YOUR_SERVER_IP
-
-# Or SSH in and rebuild locally
-ssh root@YOUR_SERVER_IP
-cd /etc/nixos  # or wherever you put your config
-nixos-rebuild switch --flake .#hetzner
 ```
 
-## Customization
+## IPv6
 
-- **Disk device**: Edit `disk-config.nix` if your disk isn't `/dev/sda`
-- **Hostname**: Edit `networking.hostName` in `configuration.nix`
-- **Timezone**: Edit `time.timeZone` in `configuration.nix`
-- **Packages**: Add to `environment.systemPackages` in `configuration.nix`
+IPv6 is auto-configured from Hetzner metadata at boot (both initrd and runtime). No manual IPv6 config needed.
+
+## Using as a Template
+
+### Option 1: Fork this repo
+
+1. Fork/clone this repository
+2. Run `./scripts/set-ssh-key.sh "your-ssh-public-key"`
+3. Deploy with `./scripts/deploy.sh`
+
+### Option 2: Bootstrap, then integrate
+
+Use this repo to bootstrap your server, then copy the `hetzner/` directory to your own flake:
+
+```bash
+# 1. Bootstrap with this repo
+./scripts/set-ssh-key.sh "your-ssh-public-key"
+./scripts/deploy.sh --target root@SERVER
+
+# 2. Copy to your flake
+cp -r hetzner/ /path/to/your/flake/
+
+# 3. Import in your flake.nix
+#    ./hetzner/configuration.nix
+#    ./hetzner/hardware-configuration.nix
+```
+
+The `hetzner/` directory is self-contained - just import both `.nix` files.
 
 ## Troubleshooting
 
-**Can't connect to port 2222 for unlock:**
-- Wait a bit longer, initrd network takes time
-- Check Hetzner console for boot messages
-- Verify your SSH key is correct
+**Can't connect to port 2222:**
+- Check Hetzner firewall allows port 2222 (both IPv4 and IPv6)
+- Verify SSH key is correct
 
-**Host key changed warning:**
-- The initrd and main system use the same host key, but if you reinstall:
-  ```bash
-  ssh-keygen -R YOUR_SERVER_IP
-  ssh-keygen -R "[YOUR_SERVER_IP]:2222"
-  ```
+**Host key warning:**
+```bash
+ssh-keygen -R "[YOUR_SERVER_IP]:2222"
+```
 
-**Disk device wrong:**
-- Hetzner Cloud typically uses `/dev/sda`
-- Check with `lsblk` in rescue mode if unsure
+## Credits
+
+This project is built on top of [nixos-anywhere](https://github.com/nix-community/nixos-anywhere) by the 
+[nix-community](https://github.com/nix-community), which makes it possible to install NixOS on any machine via SSH. 
+Disk partitioning is handled by [disko](https://github.com/nix-community/disko).
