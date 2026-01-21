@@ -8,7 +8,6 @@ disk-config.nix           # Disko LUKS disk layout
 bootstrap.nix             # nixos-anywhere entry point
 scripts/deploy.sh         # Deployment wrapper
 scripts/set-ssh-key.sh    # Configure SSH key in config
-secrets/initrd/           # Initrd SSH host key (generated, gitignored)
 
 hetzner/                  # Downstream-copyable files
   configuration.nix       # Main NixOS config
@@ -45,5 +44,5 @@ nixos-rebuild switch --flake .#hetzner --target-host root@HOST
 ## Security
 
 - Don't commit secrets or LUKS passphrases
-- Initrd host key is in `secrets/initrd/` (gitignored)
+- Initrd host key is generated on target at first boot (stored in unencrypted /boot anyway)
 - SSH keys in config are authorized keys, not private keys

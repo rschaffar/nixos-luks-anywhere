@@ -14,7 +14,6 @@ EOF
 FLAKE="hetzner"
 TARGET=""
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INITRD_KEY="${ROOT_DIR}/secrets/initrd/ssh_host_ed25519_key"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -48,17 +47,7 @@ if [[ -z "$TARGET" ]]; then
   exit 2
 fi
 
-if [[ ! -s "$INITRD_KEY" ]]; then
-  mkdir -p "$(dirname "$INITRD_KEY")"
-  umask 077
-  ssh-keygen -t ed25519 -N "" -f "$INITRD_KEY" >/dev/null
-fi
-
-STAGING_DIR="$(mktemp -d)"
-trap 'rm -rf "$STAGING_DIR"; unset LUKS_PASSPHRASE' EXIT
-mkdir -p "${STAGING_DIR}/etc/secrets/initrd"
-cp -f "$INITRD_KEY" "${STAGING_DIR}/etc/secrets/initrd/ssh_host_ed25519_key"
-chmod 600 "${STAGING_DIR}/etc/secrets/initrd/ssh_host_ed25519_key"
+trap 'unset LUKS_PASSPHRASE' EXIT
 
 read -r -s -p "LUKS passphrase: " LUKS_PASSPHRASE
 echo
@@ -66,5 +55,4 @@ echo
 nix run github:nix-community/nixos-anywhere -- \
   --flake "${ROOT_DIR}#${FLAKE}" \
   --target-host "$TARGET" \
-  --extra-files "$STAGING_DIR" \
   --disk-encryption-keys /tmp/disk-password <(printf %s "$LUKS_PASSPHRASE")

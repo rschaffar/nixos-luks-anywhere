@@ -24,7 +24,7 @@ in
     ssh = {
       enable = true;
       port = 2222;
-      # Generated and deployed by scripts/deploy.sh
+      # Generated on first boot via system.activationScripts.generateInitrdHostKey
       hostKeys = [ "/etc/secrets/initrd/ssh_host_ed25519_key" ];
       authorizedKeys = [
         "ssh-ed25519 AAAA... your-public-key-here"
@@ -34,6 +34,14 @@ in
 
   # Auto-prompt for LUKS passphrase on SSH login
   boot.initrd.systemd.users.root.shell = "/bin/systemd-tty-ask-password-agent";
+
+  # Generate initrd SSH host key on first boot (ends up in unencrypted /boot anyway)
+  system.activationScripts.generateInitrdHostKey = ''
+    if [[ ! -f /etc/secrets/initrd/ssh_host_ed25519_key ]]; then
+      mkdir -p /etc/secrets/initrd
+      ${pkgs.openssh}/bin/ssh-keygen -t ed25519 -N "" -f /etc/secrets/initrd/ssh_host_ed25519_key -q
+    fi
+  '';
 
   # Use DHCP in initrd for network (Hetzner provides DHCP)
   boot.kernelParams = [ "ip=dhcp" ];
