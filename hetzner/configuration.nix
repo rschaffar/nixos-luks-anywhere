@@ -60,11 +60,33 @@ in
   };
 
   # ==========================================================================
-  # Networking
+  # Networking (systemd-networkd + IPv6 metadata)
   # ==========================================================================
+  # Use systemd-networkd consistently (same as initrd uses for ip=dhcp).
+  # This avoids route conflicts between initrd's systemd-networkd and dhcpcd.
+  #
+  # References:
+  # - https://wiki.nixos.org/wiki/Install_NixOS_on_Hetzner_Cloud#Network_configuration
+  # - https://wiki.nixos.org/wiki/Systemd/networkd
   networking.hostName = "hetzner";
-  networking.useDHCP = true;
+  networking.useDHCP = false; # Disable dhcpcd
+  networking.useNetworkd = true; # Use systemd-networkd
   networking.enableIPv6 = true;
+
+  systemd.network = {
+    enable = true;
+    networks."10-wan" = {
+      matchConfig.Name = "enp1s0 eth0"; # Handle both names (udev rename)
+      networkConfig = {
+        DHCP = "ipv4"; # IPv4 via DHCP, IPv6 via metadata script
+        IPv6AcceptRA = false; # Hetzner doesn't provide RA, we use metadata
+      };
+      dhcpV4Config = {
+        UseDNS = false; # We set DNS manually
+      };
+    };
+  };
+
   networking.nameservers = [
     "185.12.64.1"        # Hetzner DNS (IPv4)
     "2a01:4ff:ff00::add:2"  # Hetzner DNS (IPv6)
