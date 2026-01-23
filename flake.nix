@@ -9,27 +9,29 @@
     };
   };
 
-  outputs = { nixpkgs, disko, ... }: {
-    nixosConfigurations = {
-      # x86_64 Hetzner Cloud
-      hetzner = nixpkgs.lib.nixosSystem {
-        system = "x86_64-linux";
-        modules = [
-          disko.nixosModules.disko
-          ./disk-config.nix
-          ./bootstrap.nix
-        ];
-      };
+  outputs =
+    { nixpkgs, disko, ... }:
+    {
+      nixosConfigurations = {
+        # x86_64 Hetzner Cloud
+        hetzner = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            disko.nixosModules.disko
+            ./disk-config.nix
+            ./bootstrap.nix
+          ];
+        };
 
-      # aarch64 Hetzner Cloud (ARM)
-      hetzner-arm = nixpkgs.lib.nixosSystem {
-        system = "aarch64-linux";
-        modules = [
-          disko.nixosModules.disko
-          ./disk-config.nix
-          ./bootstrap.nix
-        ];
+        # aarch64 Hetzner Cloud (ARM)
+        hetzner-arm = nixpkgs.lib.nixosSystem {
+          system = "aarch64-linux";
+          modules = [
+            disko.nixosModules.disko
+            ./disk-config.nix
+            ./bootstrap.nix
+          ];
+        };
       };
     };
-  };
 }

@@ -1,5 +1,10 @@
 # NixOS configuration for Hetzner Cloud with LUKS + initrd SSH unlock
-{ lib, pkgs, config, ... }:
+{
+  lib,
+  pkgs,
+  config,
+  ...
+}:
 let
   metadataIpv6Script = builtins.readFile ./hetzner-metadata-ipv6.sh;
 in
@@ -46,7 +51,12 @@ in
   # Use DHCP in initrd for network (Hetzner provides DHCP)
   boot.kernelParams = [ "ip=dhcp" ];
 
-  boot.initrd.systemd.storePaths = with pkgs; [ curl gawk iproute2 coreutils ];
+  boot.initrd.systemd.storePaths = with pkgs; [
+    curl
+    gawk
+    iproute2
+    coreutils
+  ];
 
   # IPv6 configuration from Hetzner metadata (initrd)
   boot.initrd.systemd.services.hetzner-metadata-ipv6 = {
@@ -55,7 +65,12 @@ in
     after = [ "systemd-networkd.service" ];
     unitConfig.DefaultDependencies = false;
     serviceConfig.Type = "oneshot";
-    path = with pkgs; [ curl gawk iproute2 coreutils ];  # coreutils for sleep
+    path = with pkgs; [
+      curl
+      gawk
+      iproute2
+      coreutils
+    ]; # coreutils for sleep
     script = metadataIpv6Script;
   };
 
@@ -66,8 +81,8 @@ in
   networking.useDHCP = true;
   networking.enableIPv6 = true;
   networking.nameservers = [
-    "185.12.64.1"        # Hetzner DNS (IPv4)
-    "2a01:4ff:ff00::add:2"  # Hetzner DNS (IPv6)
+    "185.12.64.1" # Hetzner DNS (IPv4)
+    "2a01:4ff:ff00::add:2" # Hetzner DNS (IPv6)
   ];
 
   # IPv6 configuration from Hetzner metadata (runtime)
@@ -77,7 +92,11 @@ in
     wants = [ "network-online.target" ];
     after = [ "network-online.target" ];
     serviceConfig.Type = "oneshot";
-    path = with pkgs; [ curl gawk iproute2 ];
+    path = with pkgs; [
+      curl
+      gawk
+      iproute2
+    ];
     script = metadataIpv6Script;
   };
 
@@ -102,7 +121,10 @@ in
   time.timeZone = "UTC";
 
   nix.settings = {
-    experimental-features = [ "nix-command" "flakes" ];
+    experimental-features = [
+      "nix-command"
+      "flakes"
+    ];
     trusted-users = [ "root" ];
   };
 
