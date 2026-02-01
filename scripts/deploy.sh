@@ -3,10 +3,11 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Usage: deploy.sh --target root@HOST [--flake hetzner|hetzner-arm]
+Usage: deploy.sh --target root@HOST [--flake hetzner|hetzner-arm|hetzner-dedicated]
   --target, -t   Target host (required), e.g. root@1.2.3.4
   --flake, -f    Flake output to deploy (default: hetzner)
   --arm          Shortcut for --flake hetzner-arm
+  --dedicated    Shortcut for --flake hetzner-dedicated (bare metal with RAID1)
   --help, -h     Show this help
 EOF
 }
@@ -27,6 +28,10 @@ while [[ $# -gt 0 ]]; do
       ;;
     --arm)
       FLAKE="hetzner-arm"
+      shift
+      ;;
+    --dedicated)
+      FLAKE="hetzner-dedicated"
       shift
       ;;
     --help|-h)
@@ -56,3 +61,10 @@ nix run github:nix-community/nixos-anywhere -- \
   --flake "${ROOT_DIR}#${FLAKE}" \
   --target-host "$TARGET" \
   --disk-encryption-keys /tmp/disk-password <(printf %s "$LUKS_PASSPHRASE")
+
+echo ""
+echo "=== Deployment complete ==="
+echo "The system will reboot. To unlock LUKS:"
+echo "  ssh -p 2222 $TARGET"
+echo "Then SSH normally:"
+echo "  ssh $TARGET"

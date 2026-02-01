@@ -32,6 +32,16 @@
             ./bootstrap.nix
           ];
         };
+
+        # x86_64 Hetzner Dedicated (bare metal with RAID1)
+        hetzner-dedicated = nixpkgs.lib.nixosSystem {
+          system = "x86_64-linux";
+          modules = [
+            disko.nixosModules.disko
+            ./disk-config-dedicated.nix
+            ./bootstrap-dedicated.nix
+          ];
+        };
       };
     };
 }
